@@ -216,7 +216,10 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  //x=0,return z, x!=0 return y
+  int a =!(!x); //a =0 if x=0, a=1 if x!=0, we want a=0xFFFFFFF if x!=0
+  int m= (a<<31)>>31;//m=0 if x=0, m =0xFFFF if x!=0
+  return (m&y)|(~m&z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -226,7 +229,15 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  //due to overflow, substraction result is accurate only when x,y are the same sign
+  //x+(~b+1) >=0
+  int sx,sy,f,z;
+  sx= (x>>31)&1;
+  sy= (y>>31)&1;
+  z=x+(~y+1);
+  f=(z>>31)&1 | !(z^0);
+  //sx=0,sy=1
+  return  ((!(sx^sy))&f) | (sx&(!sy));
 }
 //4
 /* 
@@ -238,7 +249,14 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  //if any bit of x is 1, return 1
+  x = x | x>>16;
+  x = x | x>>8;
+  x = x | x>>4;
+  x = x | x>>2;
+  x = x | x>>1;//if any bit of x is 1, the last digit of x must be one
+  x=x^1;//if x =0, change it to 1. if any bit of x is 1, change it to 0.
+  return x&1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -283,7 +301,27 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int ep=(uf>>23)&0x000000FF;
+  int biased=ep-127;
+  int s=uf>>31;
+  //add implict 1 to fraction part *
+  int f=(1<<23) | (uf&0xFFFFFF);
+  int val;
+  //if ep all set to 1, or excceed int range ==> 2**32
+  if (ep>158)
+    return 0x80000000u;
+  // pure fraction
+  if (biased<0)
+    return 0;
+  //2**(biased)*M*2**(-23)
+  if (biased>=23)
+    val=f<<(biased-23);
+  else
+    val=f>>(23-biased);
+  if (!s)
+    return val;
+  else
+    return -val;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
